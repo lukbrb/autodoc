@@ -1,0 +1,7 @@
+[project]
+name = "autodoc"
+version = "0.1.0"
+description = "Auto-documentation dynamique du code."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
