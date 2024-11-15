@@ -97,7 +97,6 @@ def get_iter_types(var: Iterable) -> str:
             else f"{logtype(var)}[{logtype(list(var)[-1])}]"
         )
 
-
 class FuncDef:
     """ Classe qui créé une signature de fonction typée si elle n'existe pas."""
     def __init__(self, fonction: Callable) -> None:
@@ -109,19 +108,29 @@ class FuncDef:
     
     def __str__(self) -> str:
         return f"def {self.name}{str(self.signature)}:"
+    
+
+class Arguments:
+    def __init__(self, args: tuple, kwargs: dict) -> None:
+        self.args = args
+        self.kwargs = kwargs
+
 
 class DocString:
     """ Classe structurant la docstring de la fonction.
         Doit donner des exemples des arguments passés, 
         ainsi que permettre de choisir le format de documentation choisi.
     """
+
     def __init__(self, fonction: Callable, func_def: FuncDef) -> None:
         self.fonction = fonction
         self.currentdoc = inspect.getdoc(fonction)
         self.signature = func_def.signature
 
+
     def get_args_examples(self) -> str:
         currentdoc = self.currentdoc if self.currentdoc else ""
+        print(self.signature.parameters)
         for name, value in self.signature.parameters.items():
             currentdoc += f'\n\t-{name} : {reprlib.repr(value)}' # type: ignore
         return currentdoc
@@ -130,6 +139,26 @@ class DocString:
         return self.get_args_examples()
 
 
+class Fonction:
+    """ Classe enrobant l'object fonction afin d'y ajouter des méthodes
+        de convénience pour créer la doctstring.
+    """
+
+    def __init__(self, fonction: Callable) -> None:
+        self.fonction = fonction
+    
+    @property
+    def signature(self) -> FuncDef:
+        return FuncDef(self.fonction)
+    
+    @property
+    def docstring(self) -> DocString:
+        return DocString(self.fonction, self.signature)
+
+    @property
+    def fromfile(self) -> str:
+        return os.path.basename(self.fonction.__code__.co_filename)  # TODO: remplacer os par Pathlib
+    
 class Documentation:
     """ Classe s'occupant de la mise en place de toutes les pièces
         nécessaires à la documentation du code.
@@ -149,7 +178,6 @@ class Documentation:
         self.docu += f"\n\t{self.delimiter}\n\t"
         self.docu += "\n\t..."
         return self.docu
-
 
 
 def autodoc(func):
