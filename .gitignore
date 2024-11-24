@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+Flux_Quotidiens/
+with_*
+hello.py
+ressources/.$flot_autodoc.drawio.bkp
