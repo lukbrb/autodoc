@@ -1,11 +1,12 @@
 from dataclasses import dataclass
 import inspect
-import logging
-import os
 from pathlib import Path
+import re
 import reprlib
-from typing import Any, Callable, Iterable
-from inspect import Signature, Parameter
+import types
+from typing import Any, Callable
+from inspect import Signature
+
 
 @dataclass
 class Argument:
@@ -16,28 +17,6 @@ class Argument:
 
     def __str__(self) -> str:
         return f"{self.name}: {self.annotation}"
-
-def check_and_update_file(filename: str, file_content: str, function_name: str) -> None:
-    typings_dir = Path('typings')
-    typings_dir.mkdir(parents=True, exist_ok=True)
-
-    file_path = typings_dir / filename
-    try:
-        if file_path.is_file():
-            with file_path.open('r+', encoding='utf-8') as file:
-                content = file.read()
-                if function_name in content:
-                    logging.info(f'{logging.INFO} Function {function_name} already documented')
-                else:
-                    file.write(f'{file_content}\n\n')
-        else:
-            with file_path.open('w', encoding='utf-8') as file:
-                real_filename = filename.split('.')[0] + '.py'
-                # file.write(f'""" Cette interface du fichier `{real_filename} a été générée automatiquement par `autodoc`. Si modification, ajoutez auteur : date de modification"""\n')
-                # file.write("from typing import Any\n\n")
-                file.write(file_content)
-    except Exception as e:
-        logging.error(f'{logging.ERROR}, {e}')
 
         
 def evaluate_type(argument: Argument) -> Argument:
@@ -53,12 +32,13 @@ def evaluate_type(argument: Argument) -> Argument:
     Returns:
         Argument: Copie de l'argument complété d'une annotation et d'un module associé.
     """
-    if argument is None:
+    if argument.value is None:
         annotation = "None"
     else:
         annotation = type(argument.value).__name__
     module = type(argument.value).__module__
-    return Argument(argument.name, annotation, argument.value, module) 
+    argument = Argument(argument.name, annotation, argument.value, module)
+    return argument
 
 
 def render_object(obj) -> str:
@@ -82,6 +62,20 @@ def render_object(obj) -> str:
         representation = reprlib.repr(obj)
     return representation
 
+# Importé de la bibliothèque inspect
+def formatannotation(annotation, base_module=None):
+    if getattr(annotation, '__module__', None) == 'typing':
+        def repl(match):
+            text = match.group()
+            return text.removeprefix('typing.')
+        return re.sub(r'[\w\.]+', repl, repr(annotation))
+    if isinstance(annotation, types.GenericAlias):
+        return str(annotation)
+    if isinstance(annotation, type):
+        if annotation.__module__ in ('builtins', base_module):
+            return annotation.__qualname__
+        return annotation.__module__+'.'+annotation.__qualname__
+    return repr(annotation)
 
 class Autodoc:
     """ Structure de l'auto-documentation.
@@ -131,11 +125,12 @@ class Autodoc:
         Returns:
             list[Argument]: Liste d'objets `Argument` complets.
         """
-        for arg in arguments:
-            if not arg.annotation:
-                arg = evaluate_type(arg.annotation)
+        for i, arg in enumerate(arguments):
+            if arg.annotation is Signature.empty:
+                arguments[i] = evaluate_type(arg)
             else: #  annotation déjà fournie par `signature`, nécessite de déterminer le module néanmoins
-                arg.module = type(arg.annotation).__module__        
+                arguments[i].annotation = type(arg.value).__name__
+                arguments[i].module = type(arg.annotation).__module__
         return arguments
     
     def _get_return_type(self, retour: Argument) -> Argument:
@@ -148,7 +143,10 @@ class Autodoc:
             list[Argument]: Valeur de retour `Argument` complète.
         """
         if not retour.annotation:
-            retour = evaluate_type(retour.annotation)
+            retour = evaluate_type(retour)
+        else:
+            retour.annotation = type(retour.value).__name__
+            retour.module = type(retour.annotation).__module__
         retour.name = "" if retour.value is None else self.function.__code__.co_varnames[-1]
         return retour
     
@@ -166,22 +164,22 @@ class Autodoc:
     def _get_args_examples(self) -> str:
         code_examples = ""
         for argument in self.arguments:
-            # currentdoc += f'\n\t\t{argument.name} ({argument.annotation}) = {reprlib.repr(argument.value)}'
             code_examples += f"\t\t>>> {argument.name}\n"
             code_examples += f"\t\t{render_object(argument.value)}\n"
 
         return code_examples
 
     def build_docstring(self) -> str:
-        new_doc = self._docstring if self._docstring else f"\t{Autodoc.quotestyle}\n"
-        new_doc = "\tArgs:\n"
+        new_doc = f"\t{Autodoc.quotestyle} Fonction {self.funcname}\n"  # TODO: prendre en compte une éventuelle docstring existante (self._docstring if self._docstring else) 
+        new_doc += "\tArgs:\n"
         for argument in self.arguments:
             new_doc += f"\t\t{argument.name} ({argument.annotation})\n"
         if self.retval.value:
-            new_doc += "\tReturns:"
+            new_doc += "\n\tReturns:\n"
             new_doc += f'\t\t{self.retval.name} ({self.retval.annotation})\n'
+        new_doc += "\n\tExamples:\n"
         new_doc += self._get_args_examples()
-        new_doc += f"\t\t>>> {self.retval.name}\n"
+        new_doc += f"\t\t>>> {self.funcname}(...)\n"
         new_doc += f"\t\t{render_object(self.retval.value)}"
         return new_doc
 
