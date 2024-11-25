@@ -4,6 +4,10 @@ version = "0.1.0"
 description = "Auto-documentation dynamique du code."
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = ["csv_diff", 
-                "pandas"
-                ]
+dependencies = [
+    "csv_diff",
+    "pandas",
+    "sphinx",
+    "sphinx-autoapi>=3.3.3",
+    "sphinx-rtd-theme>=3.0.2",
+]
