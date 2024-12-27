@@ -1,0 +1,40 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.7.17 Chrome/128.0.6613.36 Electron/32.0.1 Safari/537.36" border="50" scale="3" compressed="false" locked="false" version="24.7.17">
+  <diagram name="Blank" id="YmL12bMKpDGza6XwsDPr">
+    <mxGraphModel dx="1221" dy="823" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" background="none" math="1" shadow="0">
+      <root>
+        <mxCell id="X5NqExCQtvZxIxQ7pmgY-0" />
+        <mxCell id="1" parent="X5NqExCQtvZxIxQ7pmgY-0" />
+        <mxCell id="TBykFA9Nbm-_a5YkxNUj-1" value="&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;Objets utilisés&lt;/h1&gt;&lt;p&gt;Pour fonctionner, le module a besoin :&amp;nbsp;&lt;/p&gt;&lt;p&gt;&lt;/p&gt;&lt;ol&gt;&lt;li&gt;De la fonction à documenter. Via laquelle on peut avoir accès à la signature, le nom de la fonction, à la docstring, et au cadre (&lt;i&gt;frame)&lt;/i&gt;&lt;/li&gt;&lt;li&gt;Le cadre permet de déterminer grand nombre de variables : le nom du fichier, le nom des arguments passés et de la variable retournée.&lt;/li&gt;&lt;li&gt;Des arguments. On utilise directement les valeurs des arguments passés à la fonction. Dans le cas des arguments positionnels, on ne connait que leurs valeurs, mais pas leurs noms. Les arguments positionnels sont nécessairement passés dans le même ordre que dans la définition de la fonction. Ainsi, on peut utiliser la fonction &lt;i&gt;inspect.signature &lt;/i&gt;pour déterminer les noms, ou bien la liste &lt;i&gt;co_argnames &lt;/i&gt;qui est un attibut du cadre (&lt;i&gt;frame&lt;/i&gt;). Il semble plus robuste d&#39;utiliser la signature.&amp;nbsp;&lt;/li&gt;&lt;li&gt;De la valeur du résultat retourné par la fonction. Ceci pour permettre de typer ce retour.&amp;nbsp;&lt;/li&gt;&lt;li&gt;Du style de documentation souhaité. &lt;i&gt;Sera implémenté dans une v2&lt;/i&gt;&lt;/li&gt;&lt;li&gt;D&#39;un fichier de paramètres, pour par exemple spécifier le chemin vers lequel écrire les résultats.&lt;/li&gt;&lt;/ol&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;p&gt;&lt;/p&gt;" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="41" y="204" width="756" height="235" as="geometry" />
+        </mxCell>
+        <mxCell id="TBykFA9Nbm-_a5YkxNUj-2" value="&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;Auto-documentation&lt;/h1&gt;&lt;div style=&quot;text-align: right;&quot;&gt;&amp;nbsp;&lt;/div&gt;&lt;div&gt;Un module Python générant dynamiquement une interface de typage des fonctions décorées.&amp;nbsp;&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="276.5" y="5" width="279" height="114" as="geometry" />
+        </mxCell>
+        <mxCell id="TBykFA9Nbm-_a5YkxNUj-4" value="&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;Objets crées&lt;/h1&gt;&lt;p&gt;Autodoc souhaite aussi donner des exemples des valeurs utilisées, ceci à l&#39;aide de &lt;i&gt;reprlib.repr, &lt;/i&gt;qui donne une représentation alternative, souvent simplifiée par des ellispes, des objets Python. Ceci pourrait être rendu optionnel.&amp;nbsp;&lt;/p&gt;&lt;p&gt;Autodoc souhaite également pouvoir typer les structures de données contenaires récursivement. C&#39;est-à-dire, pour un tuple de liste contenant des chaînes de caractère et des entiers par exemple, pouvoir typer : &lt;b&gt;tuple[list[str], list[int]] &lt;/b&gt;plutôt que seulement &lt;b&gt;tuple&lt;/b&gt;. A terme, on souhaiterait pouvoir spécifier la profondeur à laquelle effectuer le typage.&amp;nbsp;&lt;/p&gt;&lt;p&gt;Finalement, grâce à la fonction &lt;i&gt;type&lt;/i&gt;&amp;nbsp;on peut savoir à quel module appartient une certaine classe. Si une classe n&#39;est pas dans les &lt;i&gt;builtins&lt;/i&gt;&lt;b style=&quot;font-style: italic;&quot;&gt;, &lt;/b&gt;on souhaiterait ajouter un import dans le fichier de sortie .pyi&lt;/p&gt;&lt;p&gt;&amp;nbsp;&lt;/p&gt;&lt;p&gt;Les différentes données étant très imbriquées entre elles, il semble trop complexe de créer des classes pour chaque entitée. Seuls les arguments peuvent probablement être structurés dans des &lt;i&gt;dataclasses &lt;/i&gt;pour faciliter leur traitement. Notre approche est ainsi d&#39;utiliser une classe principale &lt;i style=&quot;font-weight: bold;&quot;&gt;Autodoc &lt;/i&gt;qui rassemble tous ces attributs. L&#39;écriture dans le fichier peut s&#39;effectuer via une simple fonction.&amp;nbsp;&lt;/p&gt;" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="41" y="502" width="759" height="282" as="geometry" />
+        </mxCell>
+        <mxCell id="TBykFA9Nbm-_a5YkxNUj-6" value="" style="group" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="179" y="887" width="472" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="NjAqU9Y5rHBkyYTPuW-a-1" value="Création de l&#39;auto-documentation" style="swimlane;fontStyle=2;childLayout=stackLayout;horizontal=1;startSize=20;fillColor=none;horizontalStack=1;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;swimlaneFillColor=none;strokeColor=none;fontFamily=Helvetica;fontSize=14;fontColor=#BABABA;points=[];verticalAlign=middle;stackBorder=10;stackSpacing=-10;resizable=1;" parent="TBykFA9Nbm-_a5YkxNUj-6" vertex="1">
+          <mxGeometry x="82" width="390" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="NjAqU9Y5rHBkyYTPuW-a-2" value="Création &#xa;classe &#xa;&#xa;Autodoc" style="shape=step;perimeter=stepPerimeter;strokeColor=#6C8EBF;fontFamily=Helvetica;fontSize=10;fontColor=#6C8EBF;fillColor=#dae8fc;fixedSize=1;size=17;fontStyle=1;strokeWidth=2;spacingTop=0;points=[];" parent="NjAqU9Y5rHBkyYTPuW-a-1" vertex="1">
+          <mxGeometry x="10" y="30" width="100" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="NjAqU9Y5rHBkyYTPuW-a-3" value="Typage des &#xa;arguments" style="shape=step;perimeter=stepPerimeter;strokeColor=#82B366;fontFamily=Helvetica;fontSize=10;fontColor=#82B366;fillColor=#d5e8d4;fixedSize=1;size=17;fontStyle=1;strokeWidth=2;spacingTop=0;points=[];" parent="NjAqU9Y5rHBkyYTPuW-a-1" vertex="1">
+          <mxGeometry x="100" y="30" width="100" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="NjAqU9Y5rHBkyYTPuW-a-4" value="Construction &#xa;de la &#xa;docstring et &#xa;de la signature" style="shape=step;perimeter=stepPerimeter;strokeColor=#D6B656;fontFamily=Helvetica;fontSize=10;fontColor=#D6B656;fillColor=#fff2cc;fixedSize=1;size=17;fontStyle=1;strokeWidth=2;spacingTop=0;points=[];" parent="NjAqU9Y5rHBkyYTPuW-a-1" vertex="1">
+          <mxGeometry x="190" y="30" width="100" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="NjAqU9Y5rHBkyYTPuW-a-5" value="Ecriture&#xa; dans le&#xa;fichier " style="shape=step;perimeter=stepPerimeter;strokeColor=#B85450;fontFamily=Helvetica;fontSize=10;fontColor=#B85450;fillColor=#f8cecc;fixedSize=1;size=17;fontStyle=1;strokeWidth=2;spacingTop=0;points=[];" parent="NjAqU9Y5rHBkyYTPuW-a-1" vertex="1">
+          <mxGeometry x="280" y="30" width="100" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="TBykFA9Nbm-_a5YkxNUj-5" value="Vérification &#xa;si fichier&#xa;existant" style="shape=step;perimeter=stepPerimeter;strokeColor=#d79b00;fontFamily=Helvetica;fontSize=10;fillColor=#ffe6cc;fixedSize=1;size=17;fontStyle=1;strokeWidth=2;spacingTop=0;points=[];fontColor=#FFB570;" vertex="1" parent="TBykFA9Nbm-_a5YkxNUj-6">
+          <mxGeometry y="30" width="100" height="95" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
