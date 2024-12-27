@@ -5,9 +5,20 @@ description = "Auto-documentation dynamique du code."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "csv_diff",
-    "pandas",
     "sphinx",
     "sphinx-autoapi>=3.3.3",
     "sphinx-rtd-theme>=3.0.2",
+    "astor",
 ]
+
+[project.scripts]
+autodoc-populate = "autodoc.decomanager.populater:main"
+autodoc-depopulate = "autodoc.decomanager.depopulater:main"
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["autodoc*"]
