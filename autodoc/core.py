@@ -4,7 +4,7 @@ from pathlib import Path
 import re
 import reprlib
 import types
-from typing import Any, Callable
+from typing import Any, Callable, Union
 from inspect import Signature
 
 
@@ -74,7 +74,7 @@ def formatannotation(annotation, base_module=None):
     if isinstance(annotation, type):
         if annotation.__module__ in ('builtins', base_module):
             return annotation.__qualname__
-        return annotation.__module__+'.'+annotation.__qualname__
+        return f'{annotation.__module__}.{annotation.__qualname__}'
     return repr(annotation)
 
 class Autodoc:
@@ -93,7 +93,7 @@ class Autodoc:
     quotestyle = '"""'
     def __init__(self, function: Callable, args: tuple[Any], kwargs: dict[str, Any], 
                  retval: Any, style: str = "Google", 
-                 paramfile: str | Path | None = None) -> None:
+                 paramfile: Union[str, Path, None] = None) -> None:
         """Initialisation de la classe Autodoc
 
         Args:
@@ -109,7 +109,7 @@ class Autodoc:
         self.signature = inspect.signature(function)
         self._all_values = list(args) + list(kwargs.values())
         self.arguments = self._get_args_types([Argument(arg.name, arg.annotation, argvalue, module="") for arg, argvalue in zip(self.signature.parameters.values(), self._all_values)])
-        self._modules = {arg.module : [] for arg in self.arguments}  # Pour dynamiquement créer l'import de classes non définies dans les builtins
+        self._modules = {arg.module : set() for arg in self.arguments}  # Pour dynamiquement créer l'import de classes non définies dans les builtins
         self.retval = self._get_return_type(Argument(name="", annotation=self.signature.return_annotation, value=retval, module=""))
         self._docstring = inspect.getdoc(function)
         self.filename = function.__code__.co_filename
@@ -126,7 +126,7 @@ class Autodoc:
             list[Argument]: Liste d'objets `Argument` complets.
         """
         for i, arg in enumerate(arguments):
-            if arg.annotation is Signature.empty:
+            if arg.annotation is Signature.empty or arg.annotation is None or arg.value is None:
                 arguments[i] = evaluate_type(arg)
             else: #  annotation déjà fournie par `signature`, nécessite de déterminer le module néanmoins
                 arguments[i].annotation = type(arg.value).__name__
@@ -142,7 +142,7 @@ class Autodoc:
         Returns:
             list[Argument]: Valeur de retour `Argument` complète.
         """
-        if not retour.annotation:
+        if retour.annotation is Signature.empty or retour.annotation is None or retour.value is None:
             retour = evaluate_type(retour)
         else:
             retour.annotation = type(retour.value).__name__
@@ -155,11 +155,12 @@ class Autodoc:
         """Met à jour le dictionnaire d'imports via la liste des `Argument`.
         
         """
-        for argument in self.arguments:
+        all_objects = self.arguments + [self.retval]  # Mieux de faire une copie en ajoutant le retour pour être exhaustif
+        for argument in all_objects:
             if self._modules.get(argument.module):
-                self._modules[argument.module].append(argument.annotation)
+                self._modules[argument.module].add(argument.annotation)
             else:
-                self._modules[argument.module] = [argument.annotation]
+                self._modules[argument.module] = {argument.annotation}
     
     def _get_args_examples(self) -> str:
         code_examples = ""
@@ -181,7 +182,7 @@ class Autodoc:
         new_doc += self._get_args_examples()
         new_doc += f"\t\t>>> {self.funcname}(...)\n"
         new_doc += f"\t\t{render_object(self.retval.value)}"
-        return new_doc
+        return str(self._docstring) + new_doc
 
     def generate_imports(self) -> str:
         """Ajoute les imports des classes nécessaires.
@@ -190,11 +191,33 @@ class Autodoc:
             str: Une chaîne de caractère comprenant les imports.
         """
         module_imports = ""
+        cls_defs = ""
         self._fill_imports()
         for module, classes in self._modules.items():
-            if not module == "builtins":
+            if module == '__main__':  # C'est une classe définie dans le fichier
+                for clsname in self._modules[module]:
+                    cls_defs += self._generate_class_def(clsname)
+            if  module != "builtins":
                 module_imports += f"from {module} import {','.join(classes)}\n"
-        return module_imports
+        return module_imports + cls_defs
+
+
+    def _generate_class_def(self, clsname: str) -> str:
+        """ Génère la création d'une classe vide.
+
+            Note: 
+                La prise en charge des classes sera faite en v2.
+
+            Args:
+                clsname (str): Le nom de la classe 
+            Returns:
+                Une chaîne de caractère déinissant une classe
+        """
+        clsdef = "\n\n"
+        clsdef += f"class {clsname}:\n"
+        clsdef += "\t...\n\n"
+        return clsdef
+
 
     def _render_signature(self) -> str:
         arguments = [str(argument) for argument in self.arguments]
@@ -204,6 +227,6 @@ class Autodoc:
         fulldoc = self._render_signature()
         fulldoc += self.build_docstring()
         fulldoc += f"\n\t{Autodoc.quotestyle}\n"
-        fulldoc += "\t..."
+        fulldoc += "\t...\n"
         return fulldoc
     
