@@ -54,8 +54,10 @@ def ma_fonction(arg1: str, arg2: str, unautrearg: int=1) -> List[str, str, int]:
 
 > [!WARNING]  
 > Il n'y a pour l'instant pas de manière de combiner les typages et docstring existants. Les typages seront remplacés, et les docstring concaténées.  
+
 > [!TIP]  
 > A terme, il sera possible de décider du type de documentation souhaité (Google, Sphinx, Numpy...) et de choisir d'afficher les exemples ou non.  
+
 > [!NOTE]  
 > Changement du 31/12/2024. Le fait d'écrire le typage et les exemples dans d'autres fichiers pose problème pour ensuite créer la documentation via le LLM, qui du coup n'a pas à la fois le contexte du typage ET du code en même temps. Une option prise à cette date est de copier l'entièreté du fichier `.py` à la place du fichier `.pyi`. Néanmois le choix de pouvoir seulement typer les fonctions dans un fichier interface devrait être gardé. Une solution doit être trouvée.
 
