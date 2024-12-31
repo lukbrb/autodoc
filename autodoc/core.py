@@ -1,3 +1,4 @@
+import ast
 from dataclasses import dataclass
 import inspect
 from pathlib import Path
@@ -6,7 +7,6 @@ import reprlib
 import types
 from typing import Any, Callable, Union
 from inspect import Signature
-
 
 @dataclass
 class Argument:
@@ -106,12 +106,13 @@ class Autodoc:
         """
         self.function = function
         self.funcname = function.__name__
-        self.signature = inspect.signature(function)
+        self._signature = inspect.signature(function)
         self._all_values = list(args) + list(kwargs.values())
-        self.arguments = self._get_args_types([Argument(arg.name, arg.annotation, argvalue, module="") for arg, argvalue in zip(self.signature.parameters.values(), self._all_values)])
+        self.arguments = self._get_args_types([Argument(arg.name, arg.annotation, argvalue, module="") for arg, argvalue in zip(self._signature.parameters.values(), self._all_values)])
         self._modules = {arg.module : set() for arg in self.arguments}  # Pour dynamiquement créer l'import de classes non définies dans les builtins
-        self.retval = self._get_return_type(Argument(name="", annotation=self.signature.return_annotation, value=retval, module=""))
+        self.retval = self._get_return_type(Argument(name="", annotation=self._signature.return_annotation, value=retval, module=""))
         self._docstring = inspect.getdoc(function)
+        self._docstring = "" if self._docstring is None else self._docstring  # Evite d'appeler deux fois la fonction `inspect.getdoc`
         self.filename = function.__code__.co_filename
         self.style = style
         self.paramfile = paramfile
@@ -147,7 +148,7 @@ class Autodoc:
         else:
             retour.annotation = type(retour.value).__name__
             retour.module = type(retour.annotation).__module__
-        retour.name = "" if retour.value is None else self.function.__code__.co_varnames[-1]
+        retour.name = "" if retour.value is None or not self.function.__code__.co_varnames else self.function.__code__.co_varnames[-1]
         return retour
     
 
@@ -171,7 +172,7 @@ class Autodoc:
         return code_examples
 
     def build_docstring(self) -> str:
-        new_doc = f"\t{Autodoc.quotestyle} Fonction {self.funcname}\n"  # TODO: prendre en compte une éventuelle docstring existante (self._docstring if self._docstring else) 
+        new_doc = f"\t{Autodoc.quotestyle} Fonction {self.funcname}\n"
         new_doc += "\tArgs:\n"
         for argument in self.arguments:
             new_doc += f"\t\t{argument.name} ({argument.annotation})\n"
@@ -182,6 +183,7 @@ class Autodoc:
         new_doc += self._get_args_examples()
         new_doc += f"\t\t>>> {self.funcname}(...)\n"
         new_doc += f"\t\t{render_object(self.retval.value)}"
+        new_doc += f"\n\t{Autodoc.quotestyle}\n"
         return str(self._docstring) + new_doc
 
     def generate_imports(self) -> str:
@@ -194,7 +196,7 @@ class Autodoc:
         cls_defs = ""
         self._fill_imports()
         for module, classes in self._modules.items():
-            if module == '__main__':  # C'est une classe définie dans le fichier
+            if module == '__main__':  # Alors c'est une classe définie dans le fichier
                 for clsname in self._modules[module]:
                     cls_defs += self._generate_class_def(clsname)
             if  module != "builtins":
@@ -218,7 +220,7 @@ class Autodoc:
         clsdef += "\t...\n\n"
         return clsdef
 
-
+    
     def _render_signature(self) -> str:
         arguments = [str(argument) for argument in self.arguments]
         return f"def {self.funcname}({', '.join(arguments)}) -> {self.retval.annotation}:\n"
@@ -226,7 +228,90 @@ class Autodoc:
     def generate_full_doc(self) -> str:
         fulldoc = self._render_signature()
         fulldoc += self.build_docstring()
-        fulldoc += f"\n\t{Autodoc.quotestyle}\n"
         fulldoc += "\t...\n"
         return fulldoc
     
+
+    @property
+    def docstring(self):
+        # Pour la docstring on veut uniquement la chaîne de caractère sans les guillemets
+        return self.build_docstring().replace(Autodoc.quotestyle, "")
+
+    @property
+    def imports(self):
+        return self.generate_imports()
+
+    @property
+    def signature(self):
+        return self._render_signature()
+    
+    
+
+class FunctionModifier(ast.NodeTransformer):
+    def __init__(self, docstring, imports, new_signature):
+        self.docstring = docstring
+        self.imports = imports
+        self.new_signature = new_signature
+
+    def visit_FunctionDef(self, node):
+        # Pour ajouter les arguments, on doit créer un nouvel objet `arguments` de type `ast.arguments`
+        node.args = ast.parse(f"{self.new_signature} pass").body[0].args
+        # node.body[0].returns = ast.Constant(value=self.new_signature.split("->")[-1].strip())
+        if isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
+            node.body[0].value.s = self.docstring
+        else:
+            docstring_node = ast.Expr(value=ast.Str(value=self.docstring))
+            node.body.insert(0, docstring_node)
+
+        return node
+
+def parse_file(file_path):
+    with open(file_path, 'r') as file:
+        file_content = file.read()
+    return ast.parse(file_content)
+
+
+def get_imports(tree):
+    imports = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imports.append(f"import {alias.name}")
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                imports.append(f"from {node.module} import {alias.name}")
+    return imports
+
+def reorganize_ast(tree, imports):
+    new_body = imports + [node for node in tree.body if not isinstance(node, (ast.Import, ast.ImportFrom))]
+    tree.body = new_body
+    ast.fix_missing_locations(tree)
+    return tree
+
+
+def generate_imports(file_path):
+    import_list = get_imports(parse_file(file_path))
+    return "\n".join(import_list)
+
+
+def get_function_def(tree, function_name):
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == function_name:
+            return node
+    return None
+
+
+def add_imports_and_docstring(tree, docstring, imports, signature):
+    transformer = FunctionModifier(docstring, imports, signature)
+    func_tree = get_function_def(tree, signature.split("(")[0].split("def ")[-1])
+    modified_tree = transformer.visit(func_tree) if func_tree else tree
+    ast.fix_missing_locations(modified_tree)
+    return modified_tree
+
+def generate_code(tree):
+    return ast.unparse(tree)
+
+def process_func(file_path, docstring, imports, signature):
+    tree = parse_file(file_path)
+    modified_tree = add_imports_and_docstring(tree, docstring, imports, signature)
+    return generate_code(modified_tree)
